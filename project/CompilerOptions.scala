@@ -11,11 +11,10 @@ object CompilerOptions extends AutoPlugin {
         "-Xfatal-warnings",
         "-Xfuture",
         "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
         "-Ywarn-value-discard"
       ) ++ (
         if (scalaVersion.value.startsWith("2.10")) Nil
-        else List("-Ywarn-unused-import")
+        else List("-Ywarn-unused-import", "-Ywarn-numeric-widen")
       ),
       scalacOptions in (Compile, console) := Seq(
       ),
