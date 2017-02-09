@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/mingchuno/aws-wrap.svg?branch=master)](https://travis-ci.org/mingchuno/aws-wrap)
 [![Download](https://api.bintray.com/packages/mingchuno/maven/aws-wrap/images/download.svg?version=0.10.0)](https://bintray.com/mingchuno/maven/aws-wrap/0.10.0/link)
 
+**This is an active maintained fork from dwhjames/aws-wrap since it is unmaintained.**
+
 Asynchronous clients are provided for the following services:
 
  * DynamoDB
@@ -37,6 +39,19 @@ val result: Future[CreateTopicResult] = scalaClient.createTopic(request) // It r
 val result2: Future[CreateTopicResult] = scalaClient.createTopic("topic_name") // This is a shortcut
 
 ```
+
+## Changelog
+
+Major change will be in here for easy reference since 0.9.2.
+
+### 0.10.0
+
+- fix Boolean implicit conversion in Dynamo V1 and add Dynamo V2 support (#10 #11)
+
+### 0.9.2
+
+- cross build Scala 2.12.0
+- client can now supply config on dynamodb
 
 ## Develop
 
