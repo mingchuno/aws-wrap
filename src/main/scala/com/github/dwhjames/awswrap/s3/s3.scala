@@ -18,24 +18,21 @@
 package com.github.dwhjames.awswrap
 package s3
 
-import java.io.{InputStream, File}
+import java.io.{File, InputStream}
 import java.net.URL
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
-
-import java.util.concurrent.{TimeUnit, Executors, ExecutorService, ThreadFactory}
+import java.util.concurrent.{ExecutorService, Executors, ThreadFactory, TimeUnit}
 import java.util.concurrent.atomic.AtomicLong
 
 import com.amazonaws.ClientConfiguration
-import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider, DefaultAWSCredentialsProviderChain}
-import com.amazonaws.event.{ProgressListener, ProgressEvent, ProgressEventType}
-import com.amazonaws.internal.StaticCredentialsProvider
+import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider, AWSStaticCredentialsProvider, DefaultAWSCredentialsProviderChain}
+import com.amazonaws.event.{ProgressEvent, ProgressEventType, ProgressListener}
 import com.amazonaws.services.s3._
 import com.amazonaws.services.s3.model._
 import com.amazonaws.services.s3.transfer.Transfer
-
 import org.slf4j.{Logger, LoggerFactory}
 
 private[s3] class S3ThreadFactory extends ThreadFactory {
@@ -82,7 +79,10 @@ class AmazonS3ScalaClient(
     *
     * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/AmazonS3Client.html AmazonS3Client]]
     */
-  val client = new AmazonS3Client(awsCredentialsProvider, clientConfiguration)
+  val client: AmazonS3 = AmazonS3ClientBuilder.standard()
+    .withCredentials(awsCredentialsProvider)
+    .withClientConfiguration(clientConfiguration)
+    .build()
 
   /**
     * make a client from a credentials provider, a config, and a default executor service.
@@ -129,7 +129,7 @@ class AmazonS3ScalaClient(
     *     an executor service for synchronous calls to the underlying AmazonS3Client.
     */
   def this(awsCredentials: AWSCredentials, clientConfiguration: ClientConfiguration, executorService: ExecutorService) {
-    this(new StaticCredentialsProvider(awsCredentials), clientConfiguration, executorService)
+    this(new AWSStaticCredentialsProvider(awsCredentials), clientConfiguration, executorService)
   }
 
   /**
@@ -151,7 +151,7 @@ class AmazonS3ScalaClient(
     *     AWS credentials.
     */
   def this(awsCredentials: AWSCredentials) {
-    this(new StaticCredentialsProvider(awsCredentials))
+    this(new AWSStaticCredentialsProvider(awsCredentials))
   }
 
   /**
@@ -327,7 +327,7 @@ class AmazonS3ScalaClient(
   def deleteObjects(
     deleteObjectsRequest: DeleteObjectsRequest
   ): Future[Seq[DeleteObjectsResult.DeletedObject]] =
-    wrapMethod((req: DeleteObjectsRequest) => client.deleteObjects(req).getDeletedObjects.asScala.toSeq, deleteObjectsRequest)
+    wrapMethod((req: DeleteObjectsRequest) => client.deleteObjects(req).getDeletedObjects.asScala, deleteObjectsRequest)
 
   /**
     * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/AmazonS3.html#deleteVersion(com.amazonaws.services.s3.model.DeleteVersionRequest) AWS Java SDK]]
@@ -436,7 +436,7 @@ class AmazonS3ScalaClient(
   def listBuckets(
     listBucketsRequest: ListBucketsRequest
   ): Future[Seq[Bucket]] =
-    wrapMethod((req: ListBucketsRequest) => client.listBuckets(req).asScala.toSeq, listBucketsRequest)
+    wrapMethod((req: ListBucketsRequest) => client.listBuckets(req).asScala, listBucketsRequest)
 
   /**
     * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/AmazonS3.html#listBuckets(com.amazonaws.services.s3.model.ListBucketsRequest) AWS Java SDK]]

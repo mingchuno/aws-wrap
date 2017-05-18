@@ -38,7 +38,7 @@ trait S3ClientHelper
     c
   }
 
-  val transferManager = new TransferManager(client.client)
+  val transferManager = TransferManagerBuilder.standard().withS3Client(client.client).build()
 
   val bucketNames: Seq[String]
 
