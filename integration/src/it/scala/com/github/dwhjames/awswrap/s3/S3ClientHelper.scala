@@ -18,6 +18,8 @@ package com.github.dwhjames.awswrap
 package s3
 
 import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3._
 import com.amazonaws.services.s3.transfer._
 import org.scalatest.{BeforeAndAfterAll, Suite}
@@ -31,11 +33,10 @@ trait S3ClientHelper
   private val logger: Logger = LoggerFactory.getLogger(self.getClass)
 
   val client = {
-    val option = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
-    val c = new AmazonS3ScalaClient(new BasicAWSCredentials("FAKE_ACCESS_KEY", "FAKE_SECRET_KEY"))
-    c.client.setEndpoint("http://localhost:4000")
-    c.client.setS3ClientOptions(option)
-    c
+    val region = Regions.DEFAULT_REGION
+    val clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
+    val endpointConfiguration = new EndpointConfiguration("http://localhost:4000", region.getName)
+    new AmazonS3ScalaClient(new BasicAWSCredentials("FAKE_ACCESS_KEY", "FAKE_SECRET_KEY"), region, endpointConfiguration, clientOptions)
   }
 
   val transferManager = TransferManagerBuilder.standard().withS3Client(client.client).build()

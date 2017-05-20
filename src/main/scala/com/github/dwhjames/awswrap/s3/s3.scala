@@ -29,7 +29,9 @@ import java.util.concurrent.atomic.AtomicLong
 
 import com.amazonaws.ClientConfiguration
 import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider, AWSStaticCredentialsProvider, DefaultAWSCredentialsProviderChain}
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.event.{ProgressEvent, ProgressEventType, ProgressListener}
+import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3._
 import com.amazonaws.services.s3.model._
 import com.amazonaws.services.s3.transfer.Transfer
@@ -60,29 +62,86 @@ private[s3] class S3ThreadFactory extends ThreadFactory {
   *     a provider of AWS credentials.
   * @param clientConfiguration
   *     a client configuration.
+  * @param region
+  *     a Optional region reference. Defaults to AWS provider chain
+  * @param endpointConfiguration
+  *     a Optional endpoint configuration. This overrides the region parameter if set.
+  * @param clientOptions
+  *     a Optional S3ClientOptions.
   * @param executorService
   *     an executor service for synchronous calls to the underlying AmazonS3Client.
   * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/AmazonS3Client.html AmazonS3Client]]
   * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/AWSCredentialsProvider.html AWSCredentialsProvider]]
   * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/ClientConfiguration.html ClientConfiguration]]
+  * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/regions/Regions.html Regions]]
+  * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/client/builder/AwsClientBuilder.EndpointConfiguration.html EndpointConfiguration]]
+  * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/S3ClientOptions.html S3ClientOptions]]
   * @see java.util.concurrent.ExecutorService
   */
 class AmazonS3ScalaClient(
     awsCredentialsProvider: AWSCredentialsProvider,
     clientConfiguration:    ClientConfiguration,
-
+    region:                 Option[Regions],
+    endpointConfiguration:  Option[EndpointConfiguration],
+    clientOptions:          Option[S3ClientOptions],
     private[s3] val executorService: ExecutorService
 ) {
+
+
+  private [s3] implicit class AmazonS3ClientBuilderExtensions(builder: AmazonS3ClientBuilder) {
+    def withClientOptions(s3ClientOptions: S3ClientOptions): AmazonS3ClientBuilder = builder
+      .withAccelerateModeEnabled(s3ClientOptions.isAccelerateModeEnabled)
+      .withChunkedEncodingDisabled(s3ClientOptions.isChunkedEncodingDisabled)
+      .withDualstackEnabled(s3ClientOptions.isDualstackEnabled)
+      .withForceGlobalBucketAccessEnabled(s3ClientOptions.isForceGlobalBucketAccessEnabled)
+      .withPathStyleAccessEnabled(s3ClientOptions.isPathStyleAccess)
+      .withPayloadSigningEnabled(s3ClientOptions.isPayloadSigningEnabled)
+  }
 
   /**
     * The underlying S3 client.
     *
     * @see [[http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/s3/AmazonS3Client.html AmazonS3Client]]
     */
-  val client: AmazonS3 = AmazonS3ClientBuilder.standard()
-    .withCredentials(awsCredentialsProvider)
-    .withClientConfiguration(clientConfiguration)
-    .build()
+  val client: AmazonS3 = (region, endpointConfiguration, clientOptions) match {
+
+    case (_, Some(e), Some(c)) => AmazonS3ClientBuilder.standard()
+      .withCredentials(awsCredentialsProvider)
+      .withClientConfiguration(clientConfiguration)
+      .withEndpointConfiguration(e)
+      .withClientOptions(c)
+      .build()
+
+    case (_, Some(e), None) => AmazonS3ClientBuilder.standard()
+      .withCredentials(awsCredentialsProvider)
+      .withClientConfiguration(clientConfiguration)
+      .withEndpointConfiguration(e)
+      .build()
+
+    case (Some(r), None, None) => AmazonS3ClientBuilder.standard()
+      .withCredentials(awsCredentialsProvider)
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(r)
+      .build()
+
+    case (Some(r), None, Some(c)) => AmazonS3ClientBuilder.standard()
+      .withCredentials(awsCredentialsProvider)
+      .withClientConfiguration(clientConfiguration)
+      .withRegion(r)
+      .withClientOptions(c)
+      .build()
+
+    case (None, None, Some(c)) => AmazonS3ClientBuilder.standard()
+      .withCredentials(awsCredentialsProvider)
+      .withClientConfiguration(clientConfiguration)
+      .withClientOptions(c)
+      .build()
+
+    case (None, None, None) => AmazonS3ClientBuilder.standard()
+      .withCredentials(awsCredentialsProvider)
+      .withClientConfiguration(clientConfiguration)
+      .build()
+  }
 
   /**
     * make a client from a credentials provider, a config, and a default executor service.
@@ -93,8 +152,90 @@ class AmazonS3ScalaClient(
     *     a client configuration.
     */
   def this(awsCredentialsProvider: AWSCredentialsProvider, clientConfiguration: ClientConfiguration) {
-    this(awsCredentialsProvider, clientConfiguration, Executors.newFixedThreadPool(clientConfiguration.getMaxConnections, new S3ThreadFactory()))
+    this(
+      awsCredentialsProvider,
+      clientConfiguration,
+      None,
+      None,
+      None,
+      Executors.newFixedThreadPool(clientConfiguration.getMaxConnections, new S3ThreadFactory())
+    )
   }
+
+  /**
+    * make a client from a credentials provider, a config, region, and a default executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider, clientConfiguration: ClientConfiguration, region: Regions) {
+    this(
+      awsCredentialsProvider,
+      clientConfiguration,
+      Some(region),
+      None,
+      None,
+      Executors.newFixedThreadPool(clientConfiguration.getMaxConnections, new S3ThreadFactory())
+    )
+  }
+
+  /**
+    * make a client from a credentials provider, a config, region, endpointConfiguration and a default executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider, clientConfiguration: ClientConfiguration, region: Regions, endpointConfiguration: EndpointConfiguration) {
+    this(
+      awsCredentialsProvider,
+      clientConfiguration,
+      Some(region),
+      Some(endpointConfiguration),
+      None,
+      Executors.newFixedThreadPool(clientConfiguration.getMaxConnections, new S3ThreadFactory())
+    )
+  }
+
+  /**
+    * make a client from a credentials provider, a config, region, endpointConfiguration, clientOptions and a default executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider,
+           clientConfiguration: ClientConfiguration,
+           region: Regions,
+           endpointConfiguration: EndpointConfiguration,
+           clientOptions: S3ClientOptions
+          ) {
+    this(
+      awsCredentialsProvider,
+      clientConfiguration,
+      Some(region),
+      Some(endpointConfiguration),
+      Some(clientOptions),
+      Executors.newFixedThreadPool(clientConfiguration.getMaxConnections, new S3ThreadFactory())
+    )
+  }
+
 
   /**
     * make a client from a credentials provider, a default config, and an executor service.
@@ -105,7 +246,129 @@ class AmazonS3ScalaClient(
     *     an executor service for synchronous calls to the underlying AmazonS3Client.
     */
   def this(awsCredentialsProvider: AWSCredentialsProvider, executorService: ExecutorService) {
-    this(awsCredentialsProvider, new ClientConfiguration(), executorService)
+    this(
+      awsCredentialsProvider,
+      new ClientConfiguration(),
+      None,
+      None,
+      None,
+      executorService)
+  }
+
+  /**
+    * make a client from a credentials provider, region, a default config, and an executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider, region: Regions, executorService: ExecutorService) {
+    this(
+      awsCredentialsProvider,
+      new ClientConfiguration(),
+      Some(region),
+      None,
+      None,
+      executorService)
+  }
+
+  /**
+    * make a client from a credentials provider, region, endpointConfiguration, a default config, and an executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider, region: Regions, endpointConfiguration: EndpointConfiguration, executorService: ExecutorService) {
+    this(
+      awsCredentialsProvider,
+      new ClientConfiguration(),
+      Some(region),
+      Some(endpointConfiguration),
+      None,
+      executorService)
+  }
+
+  /**
+    * make a client from a credentials provider, region, endpointConfiguration, clientOptions, a default config, and an executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider,
+           region: Regions,
+           endpointConfiguration: EndpointConfiguration,
+           clientOptions: S3ClientOptions,
+           executorService: ExecutorService) {
+    this(
+      awsCredentialsProvider,
+      new ClientConfiguration(),
+      Some(region),
+      Some(endpointConfiguration),
+      Some(clientOptions),
+      executorService)
+  }
+
+  /**
+    * make a client from a credentials provider, region, a default config, and a default executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param region
+    *     AWS region to use.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider, region: Regions) {
+    this(awsCredentialsProvider, new ClientConfiguration(), region)
+  }
+
+  /**
+    * make a client from a credentials provider, region, endpointConfiguration, a default config, and a default executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider, region: Regions, endpointConfiguration: EndpointConfiguration) {
+    this(awsCredentialsProvider, new ClientConfiguration(), region, endpointConfiguration)
+  }
+
+  /**
+    * make a client from a credentials provider, region, endpointConfiguration, clientOptions a default config, and a default executor service.
+    *
+    * @param awsCredentialsProvider
+    *     a provider of AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    */
+  def this(awsCredentialsProvider: AWSCredentialsProvider,
+           region: Regions,
+           endpointConfiguration: EndpointConfiguration,
+           clientOptions: S3ClientOptions
+          ) {
+    this(awsCredentialsProvider, new ClientConfiguration(), region, endpointConfiguration, clientOptions)
   }
 
   /**
@@ -129,7 +392,100 @@ class AmazonS3ScalaClient(
     *     an executor service for synchronous calls to the underlying AmazonS3Client.
     */
   def this(awsCredentials: AWSCredentials, clientConfiguration: ClientConfiguration, executorService: ExecutorService) {
-    this(new AWSStaticCredentialsProvider(awsCredentials), clientConfiguration, executorService)
+    this(
+      new AWSStaticCredentialsProvider(awsCredentials),
+      clientConfiguration,
+      None,
+      None,
+      None,
+      executorService
+    )
+  }
+
+  /**
+    * make a client from credentials, a config, region and an executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentials: AWSCredentials, clientConfiguration: ClientConfiguration, region: Regions, executorService: ExecutorService) {
+    this(
+      new AWSStaticCredentialsProvider(awsCredentials),
+      clientConfiguration,
+      Some(region),
+      None,
+      None,
+      executorService
+    )
+  }
+
+  /**
+    * make a client from credentials, a config, region, endpointConfiguration and an executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentials: AWSCredentials,
+           clientConfiguration: ClientConfiguration,
+           region: Regions,
+           endpointConfiguration: EndpointConfiguration,
+           executorService: ExecutorService
+          ) {
+    this(
+      new AWSStaticCredentialsProvider(awsCredentials),
+      clientConfiguration,
+      Some(region),
+      Some(endpointConfiguration),
+      None,
+      executorService
+    )
+  }
+
+  /**
+    * make a client from credentials, a config, region, endpointConfiguration, clientOptions, and an executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentials: AWSCredentials,
+           clientConfiguration: ClientConfiguration,
+           region: Regions,
+           endpointConfiguration: EndpointConfiguration,
+           clientOptions: S3ClientOptions,
+           executorService: ExecutorService
+          ) {
+    this(
+      new AWSStaticCredentialsProvider(awsCredentials),
+      clientConfiguration,
+      Some(region),
+      Some(endpointConfiguration),
+      Some(clientOptions),
+      executorService
+    )
   }
 
   /**
@@ -145,6 +501,59 @@ class AmazonS3ScalaClient(
   }
 
   /**
+    * make a client from credentials, region, a default config, and an executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentials: AWSCredentials, region: Regions, executorService: ExecutorService) {
+    this(awsCredentials, new ClientConfiguration(), region, executorService)
+  }
+
+  /**
+    * make a client from credentials, region, endpointConfiguration, a default config, and an executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentials: AWSCredentials, region: Regions, endpointConfiguration: EndpointConfiguration, executorService: ExecutorService) {
+    this(awsCredentials, new ClientConfiguration(), region, endpointConfiguration, executorService)
+  }
+
+  /**
+    * make a client from credentials, region, endpointConfiguration, clientOptions, a default config, and an executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    * @param executorService
+    *     an executor service for synchronous calls to the underlying AmazonS3Client.
+    */
+  def this(awsCredentials: AWSCredentials,
+           region: Regions,
+           endpointConfiguration: EndpointConfiguration,
+           clientOptions: S3ClientOptions,
+           executorService: ExecutorService
+          ) {
+    this(awsCredentials, new ClientConfiguration(), region, endpointConfiguration, clientOptions, executorService)
+  }
+
+  /**
     * make a client from credentials, a default config, and a default executor service.
     *
     * @param awsCredentials
@@ -155,6 +564,48 @@ class AmazonS3ScalaClient(
   }
 
   /**
+    * make a client from credentials, region, a default config, and a default executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param region
+    *     AWS region to use.
+    */
+  def this(awsCredentials: AWSCredentials, region: Regions) {
+    this(new AWSStaticCredentialsProvider(awsCredentials), region)
+  }
+
+  /**
+    * make a client from credentials, region, endpointConfiguration, a default config, and a default executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    */
+  def this(awsCredentials: AWSCredentials, region: Regions, endpointConfiguration: EndpointConfiguration) {
+    this(new AWSStaticCredentialsProvider(awsCredentials), region, endpointConfiguration)
+  }
+
+  /**
+    * make a client from credentials, region, endpointConfiguration, clientOptions, a default config, and a default executor service.
+    *
+    * @param awsCredentials
+    *     AWS credentials.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    */
+  def this(awsCredentials: AWSCredentials, region: Regions, endpointConfiguration: EndpointConfiguration, clientOptions: S3ClientOptions) {
+    this(new AWSStaticCredentialsProvider(awsCredentials), region, endpointConfiguration, clientOptions)
+  }
+
+  /**
     * make a client from a default credentials provider, a config, and a default executor service.
     *
     * @param clientConfiguration
@@ -162,6 +613,48 @@ class AmazonS3ScalaClient(
     */
   def this(clientConfiguration: ClientConfiguration) {
     this(new DefaultAWSCredentialsProviderChain(), clientConfiguration)
+  }
+
+  /**
+    * make a client from a default credentials provider, a config, and a default executor service.
+    *
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    */
+  def this(clientConfiguration: ClientConfiguration, region: Regions) {
+    this(new DefaultAWSCredentialsProviderChain(), clientConfiguration, region)
+  }
+
+  /**
+    * make a client from a default credentials provider, a config, and a default executor service.
+    *
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    */
+  def this(clientConfiguration: ClientConfiguration, region: Regions, endpointConfiguration: EndpointConfiguration) {
+    this(new DefaultAWSCredentialsProviderChain(), clientConfiguration, region, endpointConfiguration)
+  }
+
+  /**
+    * make a client from a default credentials provider, a config, and a default executor service.
+    *
+    * @param clientConfiguration
+    *     a client configuration.
+    * @param region
+    *     AWS region to use.
+    * @param endpointConfiguration
+    *     AWS endpoint configuration to use.
+    * @param clientOptions
+    *     AWS S3 client options to use.
+    */
+  def this(clientConfiguration: ClientConfiguration, region: Regions, endpointConfiguration: EndpointConfiguration, clientOptions: S3ClientOptions) {
+    this(new DefaultAWSCredentialsProviderChain(), clientConfiguration, region, endpointConfiguration, clientOptions)
   }
 
   /**
