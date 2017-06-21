@@ -20,14 +20,12 @@ package dynamodb
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-
-import org.scalatest.{Suite, BeforeAndAfterAll}
-
-import com.amazonaws.auth.BasicAWSCredentials
+import org.scalatest.{BeforeAndAfterAll, Suite}
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2._
 import com.amazonaws.services.dynamodbv2.model._
-
-import org.slf4j.Logger;
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory;
 
 
@@ -39,8 +37,11 @@ trait DynamoDBClient
   private val logger: Logger = LoggerFactory.getLogger(self.getClass)
 
   val client = {
-    val jClient = new AmazonDynamoDBAsyncClient(new BasicAWSCredentials("FAKE_ACCESS_KEY", "FAKE_SECRET_KEY"))
-    jClient.setEndpoint("http://localhost:8000")
+    val jClient: AmazonDynamoDBAsyncClient = AmazonDynamoDBAsyncClientBuilder.standard()
+      .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("FAKE_ACCESS_KEY", "FAKE_SECRET_KEY")))
+      .withEndpointConfiguration(new EndpointConfiguration("http://localhost:8000", "us-west-1"))
+      .build()
+      .asInstanceOf[AmazonDynamoDBAsyncClient]
 
     new AmazonDynamoDBScalaClient(jClient)
   }

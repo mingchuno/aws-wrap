@@ -23,13 +23,11 @@ import java.util.{concurrent => juc}
 import java.util.concurrent.{atomic => juca}
 import java.util.concurrent.{locks => jucl}
 
-import com.amazonaws.{AmazonClientException, AmazonServiceException, ClientConfiguration}
-import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider}
-import com.amazonaws.internal.StaticCredentialsProvider
+import com.amazonaws.{AmazonClientException, ClientConfiguration, SdkBaseException}
+import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider, AWSStaticCredentialsProvider}
 import com.amazonaws.retry.RetryUtils
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import com.amazonaws.services.dynamodbv2.model.{BatchWriteItemRequest, ProvisionedThroughputExceededException, ReturnConsumedCapacity, WriteRequest}
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -60,7 +58,7 @@ object ConcurrentBatchWriter {
     * @param writeConcurrency write concurrency and also the max connections
     * @return a ClientConfiguration that can be further config
     */
-  def defaultClientConfig(writeConcurrency: Int) =
+  def defaultClientConfig(writeConcurrency: Int): ClientConfiguration =
     new ClientConfiguration()
       .withMaxErrorRetry(0)
       .withMaxConnections(writeConcurrency)
@@ -101,7 +99,7 @@ class ConcurrentBatchWriter(
     *     The number of concurrent writers
     */
   def this(tableName: String, credentials: AWSCredentials, writeConcurrency: Int) {
-    this(tableName, new StaticCredentialsProvider(credentials), writeConcurrency, ConcurrentBatchWriter.defaultClientConfig(writeConcurrency))
+    this(tableName, new AWSStaticCredentialsProvider(credentials), writeConcurrency, ConcurrentBatchWriter.defaultClientConfig(writeConcurrency))
   }
 
   // convenience type synonym
@@ -115,7 +113,10 @@ class ConcurrentBatchWriter(
 
   // a synchronous DynamoDB client that performs no internal retry-logic
   // and has a pool of connections equal to the number of concurrent writers
-  private val dynamoDBClient = new AmazonDynamoDBClient(credentialsProvider, clientConfiguration.withMaxConnections(writeConcurrency))
+  private val dynamoDBClient = AmazonDynamoDBClientBuilder.standard()
+    .withCredentials(credentialsProvider)
+    .withClientConfiguration(clientConfiguration.withMaxConnections(writeConcurrency))
+    .build()
 
   /*
    * turn an fixed capacity, array blocking queue into a buffer
@@ -333,7 +334,7 @@ class ConcurrentBatchWriter(
             try {
               writeWithBackoffRetry(batch)
             } catch {
-              case e: AmazonServiceException if RetryUtils.isRequestEntityTooLargeException(e) =>
+              case e: SdkBaseException if RetryUtils.isRequestEntityTooLargeException(e) =>
                 // if request exceeded the 1Mb request limit
                 val requests = batch.get(tableName)
                 val size = requests.size

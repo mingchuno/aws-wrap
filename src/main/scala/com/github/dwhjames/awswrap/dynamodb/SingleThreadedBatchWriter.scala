@@ -21,13 +21,11 @@ package dynamodb
 import java.{util => ju}
 import java.util.Random
 
-import com.amazonaws.{AmazonServiceException, ClientConfiguration}
-import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider}
-import com.amazonaws.internal.StaticCredentialsProvider
+import com.amazonaws.{ClientConfiguration, SdkBaseException}
+import com.amazonaws.auth.{AWSCredentials, AWSCredentialsProvider, AWSStaticCredentialsProvider}
 import com.amazonaws.retry.RetryUtils
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import com.amazonaws.services.dynamodbv2.model.{BatchWriteItemRequest, ProvisionedThroughputExceededException, ReturnConsumedCapacity, WriteRequest}
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -52,17 +50,20 @@ class SingleThreadedBatchWriter(
     *    client supply ClientConfiguration
     */
   def this(tableName: String, credentials: AWSCredentials, clientConfiguration: ClientConfiguration) {
-    this(tableName, new StaticCredentialsProvider(credentials), clientConfiguration)
+    this(tableName, new AWSStaticCredentialsProvider(credentials), clientConfiguration)
   }
 
   private type Batch = ju.Map[String, ju.List[WriteRequest]]
 
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private val client = new AmazonDynamoDBClient(credentialsProvider, clientConfiguration)
+  private val client = AmazonDynamoDBClientBuilder.standard()
+    .withCredentials(credentialsProvider)
+    .withClientConfiguration(clientConfiguration)
+    .build()
 
   def this(tableName: String, credentials: AWSCredentials) {
-    this(tableName, new StaticCredentialsProvider(credentials))
+    this(tableName, new AWSStaticCredentialsProvider(credentials))
   }
 
   // implement exponential backoff using Thread.sleep
@@ -173,7 +174,7 @@ class SingleThreadedBatchWriter(
         try {
           writeWithBackoffRetry(batch)
         } catch {
-          case e: AmazonServiceException if RetryUtils.isRequestEntityTooLargeException(e) =>
+          case e: SdkBaseException if RetryUtils.isRequestEntityTooLargeException(e) =>
             // if request exceeded the 1Mb request limit
             val requests = batch.get(tableName)
             val size = requests.size
