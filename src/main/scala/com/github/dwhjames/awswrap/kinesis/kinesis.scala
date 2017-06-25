@@ -20,18 +20,16 @@ package kinesis
 
 import java.nio.ByteBuffer
 
-import com.amazonaws.ClientConfiguration
-import com.amazonaws.auth.AWSCredentialsProvider
-import com.amazonaws.handlers.AsyncHandler
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.kinesis._
-import com.amazonaws.services.kinesis.model._
+import com.amazonaws.services.kinesis.AmazonKinesisAsync
+import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsync
 
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
 class AmazonKinesisAsyncScala(val client: AmazonKinesisAsync) {
-
+  
+  import com.amazonaws.services.kinesis.model._
+  
   def addTagsToStreamAsync(
     addTagsToStreamRequest: AddTagsToStreamRequest
   ): Future[AddTagsToStreamResult] =
@@ -358,5 +356,46 @@ class AmazonKinesisAsyncScala(val client: AmazonKinesisAsync) {
       client.updateShardCountAsync,
       new UpdateShardCountRequest().withStreamName(streamName).withScalingType(scalingType).withTargetShardCount(targetShardCount)
     )
-
 }
+
+class AmazonKinesisFirehoseAsyncScala(val client: AmazonKinesisFirehoseAsync) {
+  import com.amazonaws.services.kinesisfirehose.model._
+  
+  def createDeliveryStreamAsync(
+    createDeliveryStreamRequest: CreateDeliveryStreamRequest
+  ): Future[CreateDeliveryStreamResult] =
+    wrapAsyncMethod[CreateDeliveryStreamRequest, CreateDeliveryStreamResult](client.createDeliveryStreamAsync, createDeliveryStreamRequest)
+  
+  def deleteDeliveryStreamAsync(
+    deleteDeliveryStreamRequest: DeleteDeliveryStreamRequest
+  ): Future[DeleteDeliveryStreamResult] =
+    wrapAsyncMethod[DeleteDeliveryStreamRequest, DeleteDeliveryStreamResult](client.deleteDeliveryStreamAsync, deleteDeliveryStreamRequest)
+  
+  def describeDeliveryStreamAsync(
+    describeDeliveryStreamRequest: DescribeDeliveryStreamRequest
+  ): Future[DescribeDeliveryStreamResult] =
+    wrapAsyncMethod[DescribeDeliveryStreamRequest, DescribeDeliveryStreamResult](client.describeDeliveryStreamAsync, describeDeliveryStreamRequest)
+  
+  def listDeliveryStreamsAsync(
+    listDeliveryStreamsRequest: ListDeliveryStreamsRequest
+  ): Future[ListDeliveryStreamsResult] =
+    wrapAsyncMethod[ListDeliveryStreamsRequest, ListDeliveryStreamsResult](client.listDeliveryStreamsAsync, listDeliveryStreamsRequest)
+
+  def putRecordAsync(
+    putRecordRequest: PutRecordRequest
+  ): Future[PutRecordResult] =
+    wrapAsyncMethod[PutRecordRequest, PutRecordResult](client.putRecordAsync, putRecordRequest)
+  
+  def putRecordBatchAsync(
+    putRecordBatchRequest: PutRecordBatchRequest
+  ): Future[PutRecordBatchResult] =
+    wrapAsyncMethod[PutRecordBatchRequest, PutRecordBatchResult](client.putRecordBatchAsync, putRecordBatchRequest)
+
+  def updateDestinationAsync(
+    updateDestinationRequest: UpdateDestinationRequest
+  ): Future[UpdateDestinationResult] =
+    wrapAsyncMethod[UpdateDestinationRequest, UpdateDestinationResult](client.updateDestinationAsync, updateDestinationRequest)
+  
+  
+}
+
