@@ -12,6 +12,8 @@ object Dependencies {
 
     val logback = "1.1.7"
 
+    val beanUtils = "1.8.0"
+
     val scalatest = "3.0.1"
   }
 
@@ -24,6 +26,7 @@ object Dependencies {
     val awsJavaSDK_simpledb = "com.amazonaws" % "aws-java-sdk-simpledb" % V.awsJavaSDK
     val awsJavaSDK_sns = "com.amazonaws" % "aws-java-sdk-sns" % V.awsJavaSDK
     val awsJavaSDK_sqs = "com.amazonaws" % "aws-java-sdk-sqs" % V.awsJavaSDK
+    val awsJavaSDK_kinesis = "com.amazonaws" % "aws-java-sdk-kinesis" % V.awsJavaSDK
     // val awsJavaSDK = "com.amazonaws" % "aws-java-sdk" % V.awsJavaSDK exclude("joda-time", "joda-time")
 
     val jodaTime    = "joda-time" % "joda-time"    % V.jodaTime
@@ -32,6 +35,8 @@ object Dependencies {
     val slf4j = "org.slf4j" % "slf4j-api" % V.slf4j
 
     val logback    = "ch.qos.logback" % "logback-classic" % V.logback
+
+    val beanUtils = "commons-beanutils" % "commons-beanutils" % V.beanUtils
   }
 
   object Test {
