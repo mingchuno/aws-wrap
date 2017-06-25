@@ -23,7 +23,7 @@ import java.nio.ByteBuffer
 import com.amazonaws.services.kinesis.AmazonKinesisAsync
 import com.amazonaws.services.kinesisfirehose.AmazonKinesisFirehoseAsync
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.Future
 
 class AmazonKinesisAsyncScala(val client: AmazonKinesisAsync) {
@@ -40,7 +40,7 @@ class AmazonKinesisAsyncScala(val client: AmazonKinesisAsync) {
     tags: Map[String, String]
   ): Future[AddTagsToStreamResult] =
     wrapAsyncMethod[AddTagsToStreamRequest, AddTagsToStreamResult](client.addTagsToStreamAsync,
-      new AddTagsToStreamRequest().withStreamName(streamName).withTags(tags))
+      new AddTagsToStreamRequest().withStreamName(streamName).withTags(tags.asJava))
 
   def createStreamAsync(
     createStreamRequest: CreateStreamRequest
@@ -320,7 +320,7 @@ class AmazonKinesisAsyncScala(val client: AmazonKinesisAsync) {
     tagKeys: List[String]
   ): Future[RemoveTagsFromStreamResult] =
     wrapAsyncMethod[RemoveTagsFromStreamRequest, RemoveTagsFromStreamResult](client.removeTagsFromStreamAsync,
-      new RemoveTagsFromStreamRequest().withStreamName(streamName).withTagKeys(tagKeys)
+      new RemoveTagsFromStreamRequest().withStreamName(streamName).withTagKeys(tagKeys.asJava)
     )
 
   def splitShardAsync(
