@@ -25,11 +25,13 @@ libraryDependencies ++= Seq(
   Dependencies.Compile.awsJavaSDK_simpledb % "provided",
   Dependencies.Compile.awsJavaSDK_sns % "provided",
   Dependencies.Compile.awsJavaSDK_sqs % "provided",
+  Dependencies.Compile.awsJavaSDK_kinesis % "provided",
   Dependencies.Compile.slf4j,
+  Dependencies.Compile.beanUtils,
   Dependencies.Test.scalaTest
 )
 
-bintrayPackageLabels := Seq("aws", "dynamodb", "s3", "ses", "simpledb", "sns", "sqs", "async", "future")
+bintrayPackageLabels := Seq("aws", "dynamodb", "s3", "ses", "simpledb", "sns", "sqs", "kinesis", "async", "future")
 
 lazy val awsWrapTest = project.
   in(file("integration")).
