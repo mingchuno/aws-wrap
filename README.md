@@ -14,6 +14,8 @@ Asynchronous clients are provided for the following services:
  * SimpleDB
  * Simple Notification Service (SNS)
  * Simple Queue Service (SQS)
+ * Kinesis
+ * Kinesis Firehose
 
 ## Install
 
