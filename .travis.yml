@@ -1,4 +1,4 @@
-sudo: false
+sudo: required
 language: scala
 scala:
   - 2.12.0
@@ -9,6 +9,10 @@ jdk:
 cache:
   directories:
     - $HOME/.ivy2/cache
+before_install:
+  - apt-get update
+  - apt-get install nodejs npm
+  - npm install -g kinesalite
 install: bundle install
 script:
   - sbt ++$TRAVIS_SCALA_VERSION --warn update compile test doc awsWrapTest/it:compile && sbt ++$TRAVIS_SCALA_VERSION awsWrapTest/it:test
