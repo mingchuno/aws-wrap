@@ -28,6 +28,8 @@ import org.slf4j.{Logger, LoggerFactory}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
+import scala.language.postfixOps
+
 
 trait KinesisClientHelper
   extends BeforeAndAfterAll
