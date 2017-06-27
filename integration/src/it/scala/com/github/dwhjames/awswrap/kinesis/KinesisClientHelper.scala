@@ -21,7 +21,6 @@ import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClientBuilder
 import com.amazonaws.services.kinesis.AmazonKinesisAsync
-import com.amazonaws.services.kinesis.model.CreateStreamRequest
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -61,11 +60,8 @@ trait KinesisClientHelper
 
     streamNames foreach { name =>
       logger.info(s"Creating stream $name")
-      val request: CreateStreamRequest = new CreateStreamRequest()
-        .withStreamName(name)
-        .withShardCount(1)
 
-      Try(Await.result(client.createStreamAsync(request), 5 seconds)) match {
+      Try(Await.result(client.createStreamAsync(name, 1), 5 seconds)) match {
         case x: Success[_] =>
           logger.info("Success")
           Thread.sleep(2000)
