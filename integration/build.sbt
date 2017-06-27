@@ -5,6 +5,7 @@ name := "aws-wrap-test"
 libraryDependencies ++= Seq(
   Dependencies.Compile.awsJavaSDK_dynamodb % "it",
   Dependencies.Compile.awsJavaSDK_s3 % "it",
+  Dependencies.Compile.awsJavaSDK_kinesis % "it",
   Dependencies.Compile.jodaTime % "it",
   Dependencies.Compile.jodaConvert % "it",
   Dependencies.Compile.logback % "it",
@@ -23,6 +24,8 @@ testOptions in IntegrationTest += Tests.Setup { () =>
     Process("bash start-dynamodb-local.sh").!
     println("Start fakes3")
     Process("bash start-fakes3.sh").!
+    println("Start local kinesis")
+    Process("bash start-kinesis-local.sh").!
 }
 
 testOptions in IntegrationTest += Tests.Cleanup { () =>
@@ -31,4 +34,6 @@ testOptions in IntegrationTest += Tests.Cleanup { () =>
     Process("bash stop-dynamodb-local.sh").!
     println("Stop fakes3")
     Process("bash stop-fakes3.sh").!
+    println("Stop local kinesis")
+    Process("bash stop-kinesis-local.sh").!
 }
