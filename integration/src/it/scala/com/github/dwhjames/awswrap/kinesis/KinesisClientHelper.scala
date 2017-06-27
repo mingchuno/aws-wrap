@@ -66,7 +66,9 @@ trait KinesisClientHelper
         .withShardCount(1)
 
       Try(Await.result(client.createStreamAsync(request), 5 seconds)) match {
-        case x: Success[_] => logger.info("Success")
+        case x: Success[_] =>
+          logger.info("Success")
+          Thread.sleep(2000)
         case x: Failure[_] => x.exception
       }
 
