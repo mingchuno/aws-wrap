@@ -10,8 +10,8 @@ cache:
   directories:
     - $HOME/.ivy2/cache
 before_install:
-  - apt-get update
-  - apt-get install nodejs npm
+  - sudo apt-get update
+  - sudo apt-get install nodejs npm
   - npm install -g kinesalite
 install: bundle install
 script:
