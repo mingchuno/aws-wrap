@@ -1,7 +1,7 @@
 # Asynchronous Scala Clients for Amazon Web Services
 
 [![Build Status](https://travis-ci.org/mingchuno/aws-wrap.svg?branch=master)](https://travis-ci.org/mingchuno/aws-wrap)
-[![Download](https://api.bintray.com/packages/mingchuno/maven/aws-wrap/images/download.svg?version=0.11.0)](https://bintray.com/mingchuno/maven/aws-wrap/0.11.0/link)
+[![Download](https://api.bintray.com/packages/mingchuno/maven/aws-wrap/images/download.svg?version=0.12.0)](https://bintray.com/mingchuno/maven/aws-wrap/0.12.0/link)
 
 **This is an active maintained fork from dwhjames/aws-wrap since it is unmaintained.**
 
@@ -26,7 +26,7 @@ If you are using SBT, simply add the following to your `build.sbt` file:
 ```
 resolvers += Resolver.bintrayRepo("mingchuno", "maven")
 
-libraryDependencies += "com.github.dwhjames" %% "aws-wrap" % "0.11.0"
+libraryDependencies += "com.github.dwhjames" %% "aws-wrap" % "0.12.0"
 ```
 
 ## Usage
@@ -46,9 +46,13 @@ val result2: Future[CreateTopicResult] = scalaClient.createTopic("topic_name") /
 
 Major change will be in here for easy reference since 0.9.2.
 
+### 0.12.0
+
+- add Kinesis and Firehose support (#15 #13)
+
 ### 0.11.0
 
-- update AWS java SDK version and remove usage of some deprecated functions
+- update AWS java SDK version and remove usage of some deprecated functions (#12)
 
 ### 0.10.0
 
