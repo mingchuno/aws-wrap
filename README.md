@@ -16,6 +16,7 @@ Asynchronous clients are provided for the following services:
  * Simple Queue Service (SQS)
  * Kinesis
  * Kinesis Firehose
+ * KMS
 
 ## Install
 
@@ -31,7 +32,7 @@ libraryDependencies += "com.github.dwhjames" %% "aws-wrap" % "0.12.0"
 
 ## Usage
 
-Basically this libary is a thin wrap around offical AWS Java SDK. Take SNS as an example
+Basically this libary is a thin wrap around official AWS Java SDK. Take SNS as an example
 
 ```
 val javaClient = new AmazonSNSAsyncClient() // AWS Java Client
