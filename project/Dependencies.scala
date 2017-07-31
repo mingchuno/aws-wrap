@@ -27,7 +27,6 @@ object Dependencies {
     val awsJavaSDK_sns = "com.amazonaws" % "aws-java-sdk-sns" % V.awsJavaSDK
     val awsJavaSDK_sqs = "com.amazonaws" % "aws-java-sdk-sqs" % V.awsJavaSDK
     val awsJavaSDK_kinesis = "com.amazonaws" % "aws-java-sdk-kinesis" % V.awsJavaSDK
-    // val awsJavaSDK = "com.amazonaws" % "aws-java-sdk" % V.awsJavaSDK exclude("joda-time", "joda-time")
 
     val jodaTime    = "joda-time" % "joda-time"    % V.jodaTime
     val jodaConvert = "org.joda"  % "joda-convert" % V.jodaConvert
